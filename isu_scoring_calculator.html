@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>ISU Figure Skating Scoring Calculator — Season 2025/26 (Singles · Pairs · Ice Dance)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root{
+    --bg:#0f1726; --panel:#172238; --panel2:#1f2c47; --line:#2b3a5a;
+    --ink:#e8eefc; --muted:#9fb0d0; --accent:#4cc2ff; --good:#52d28e; --bad:#ff7a85;
+    --warn:#ffd166;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+       background:linear-gradient(180deg,#0b1322,#0f1726 30%);color:var(--ink);min-height:100vh}
+  header{padding:18px 22px;border-bottom:1px solid var(--line);display:flex;
+         justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:12px}
+  h1{font-size:18px;margin:0;letter-spacing:.3px}
+  h1 small{display:block;color:var(--muted);font-size:12px;font-weight:400;margin-top:4px}
+  .layout{display:grid;grid-template-columns:1.7fr 1fr;gap:16px;padding:16px 22px}
+  @media(max-width:1050px){.layout{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+  .card h2{font-size:13px;margin:0 0 10px;letter-spacing:.4px;text-transform:uppercase;color:var(--muted)}
+  .row{display:grid;grid-template-columns:30px 1.5fr 70px 70px 60px 90px 80px 95px 28px;
+       gap:6px;align-items:center;padding:6px 0;border-bottom:1px dashed #243254}
+  .row.header{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--line);padding-bottom:4px}
+  .row select, .row input{background:var(--panel2);border:1px solid var(--line);border-radius:6px;
+        color:var(--ink);padding:5px 6px;font-size:13px;width:100%}
+  .row select:focus, .row input:focus{outline:1px solid var(--accent)}
+  .pill{display:inline-block;padding:2px 6px;border-radius:999px;background:#243254;font-size:11px;color:var(--muted);margin-left:6px}
+  .num{text-align:right;font-variant-numeric:tabular-nums;font-size:13px}
+  .num.bv{color:var(--muted)}
+  .num.pos{color:var(--good)}
+  .num.neg{color:var(--bad)}
+  button.del{background:transparent;border:none;color:#8aa0c8;cursor:pointer;font-size:16px;line-height:1}
+  button.del:hover{color:var(--bad)}
+  .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 4px}
+  .btn{background:var(--panel2);border:1px solid var(--line);color:var(--ink);
+       padding:6px 12px;border-radius:6px;cursor:pointer;font-size:13px}
+  .btn:hover{border-color:var(--accent)}
+  .btn.primary{background:#1c5d8f;border-color:#1c5d8f}
+  .btn.primary:hover{background:#247bb8}
+  .totals{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+  .tot{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+  .tot .label{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.4px}
+  .tot .v{font-size:22px;font-weight:600;font-variant-numeric:tabular-nums}
+  .tot.big{grid-column:1/-1;background:linear-gradient(135deg,#173c5e,#1c5d8f);border-color:#2a78b3}
+  .tot.big .v{font-size:32px}
+  .pcs-row{display:grid;grid-template-columns:1.4fr 70px 60px 1fr;gap:8px;align-items:center;padding:5px 0}
+  .pcs-row label{color:var(--muted);font-size:12px}
+  .pcs-row input[type=range]{width:100%}
+  select, input{font-family:inherit}
+  .deduct-grid{display:grid;grid-template-columns:1fr 70px;gap:6px;align-items:center}
+  .deduct-grid label{font-size:12px;color:var(--muted)}
+  .note{font-size:11px;color:var(--muted);margin-top:6px;line-height:1.4}
+  .seg-toggle{display:flex;gap:6px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:3px}
+  .seg-toggle button{flex:1;background:transparent;border:none;color:var(--muted);
+        padding:7px 10px;border-radius:6px;cursor:pointer;font-size:12px;white-space:nowrap}
+  .seg-toggle button.active{background:#1c5d8f;color:#fff}
+  .seg-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .stack{display:flex;flex-direction:column;gap:14px}
+  footer{padding:10px 22px 30px;color:var(--muted);font-size:11px;text-align:center}
+  a{color:var(--accent)}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>ISU Figure Skating Scoring Calculator
+    <small>Singles · Pairs · Ice Dance — Season 2025/26 · ISU Comms 2707 (Singles/Pairs SOV), 2705 (Ice Dance SOV), 2701 (Levels & GOE)</small>
+  </h1>
+  <div class="seg-row">
+    <div class="seg-toggle" role="tablist" aria-label="Discipline">
+      <button id="discSingles" class="active" onclick="setDiscipline('singles')">Singles</button>
+      <button id="discPairs"               onclick="setDiscipline('pairs')">Pairs</button>
+      <button id="discDance"               onclick="setDiscipline('dance')">Ice Dance</button>
+    </div>
+    <div class="seg-toggle" id="segPicker"></div>
+  </div>
+</header>
+
+<div class="layout">
+
+  <!-- ELEMENTS -->
+  <section class="card">
+    <h2>Technical Elements <span id="segLabel" class="pill"></span></h2>
+    <div class="row header">
+      <div></div>
+      <div>Element</div>
+      <div>Mod.</div>
+      <div>Level</div>
+      <div>×1.1</div>
+      <div>Base Value</div>
+      <div>GOE (−5…+5)</div>
+      <div>Element Score</div>
+      <div></div>
+    </div>
+    <div id="elements"></div>
+    <div class="toolbar">
+      <button class="btn" onclick="addElement()">+ Add element</button>
+      <button class="btn" onclick="resetAll()">Reset</button>
+    </div>
+    <div class="note" id="elementNote"></div>
+  </section>
+
+  <!-- RIGHT COLUMN -->
+  <div class="stack">
+
+    <!-- TOTALS -->
+    <section class="card">
+      <h2>Total Segment Score</h2>
+      <div class="totals">
+        <div class="tot"><div class="label">Technical Element Score</div><div class="v" id="tTES">0.00</div></div>
+        <div class="tot"><div class="label">Program Components</div><div class="v" id="tPCS">0.00</div></div>
+        <div class="tot"><div class="label">Deductions</div><div class="v" id="tDED">0.00</div></div>
+        <div class="tot"><div class="label">Falls counted</div><div class="v" id="tFALL">0</div></div>
+        <div class="tot big"><div class="label">Total Segment Score</div><div class="v" id="tTOTAL">0.00</div></div>
+      </div>
+      <div class="note" id="tWarn"></div>
+    </section>
+
+    <!-- PCS -->
+    <section class="card">
+      <h2>Program Components <span class="pill" id="pcsFactorLabel"></span></h2>
+      <div id="pcs"></div>
+      <div class="note" id="pcsNote"></div>
+    </section>
+
+    <!-- DEDUCTIONS -->
+    <section class="card">
+      <h2>Deductions</h2>
+      <div class="deduct-grid">
+        <label>Falls (−1.0 per fall, senior)</label>
+        <input type="number" id="dedFalls" min="0" step="1" value="0" />
+        <label>Time violation (−1.0 per 5 sec over/under)</label>
+        <input type="number" id="dedTime" min="0" step="1" value="0" />
+        <label>Costume / prop violation (−1.0 each)</label>
+        <input type="number" id="dedCostume" min="0" step="1" value="0" />
+        <label>Music violation (−1.0)</label>
+        <input type="number" id="dedMusic" min="0" step="1" value="0" />
+        <label>Late start (−1.0)</label>
+        <input type="number" id="dedLate" min="0" step="1" value="0" />
+        <label>Illegal element (−2.0)</label>
+        <input type="number" id="dedIllegal" min="0" step="1" value="0" />
+        <label>Other deductions</label>
+        <input type="number" id="dedOther" min="0" step="0.5" value="0" />
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<footer>
+  Built from live ISU rules — <b>Comm 2707</b> (Singles/Pairs SOV, May 16 2025),
+  <b>Comm 2705</b> (Ice Dance SOV, Jun 2 2025), <b>Comm 2701</b> (Levels & GOE, Apr 25 2025).
+  Not affiliated with the ISU. For exact judging behavior consult the official Technical Panel Handbook.
+</footer>
+
+<script>
+/* ============================================================
+   ISU 2025/26 — Master scoring data
+   Singles & Pairs: ISU Communication 2707 (May 16 2025)
+   Ice Dance:       ISU Communication 2705 (Jun 2 2025)
+   GOE guidelines:  ISU Communication 2701 (Apr 25 2025)
+   ============================================================ */
+
+/* ===================== JUMPS (Singles + Pair solo jumps) ===================== */
+const jumpsBV = {
+  "1T":  {clean:0.40, q:0.40, "<":0.32, "<<":0.00},
+  "1S":  {clean:0.40, q:0.40, "<":0.32, "<<":0.00},
+  "1Lo": {clean:0.50, q:0.50, "<":0.40, "<<":0.00},
+  "1Eu": {clean:0.50, "<<":0.00},
+  "1F":  {clean:0.50, q:0.50, "<":0.40, "<<":0.00, "!":0.50, "e":0.40},
+  "1Lz": {clean:0.60, q:0.60, "<":0.48, "<<":0.00, "!":0.60, "e":0.48},
+  "1A":  {clean:1.10, q:1.10, "<":0.88, "<<":0.00},
+  "2T":  {clean:1.30, q:1.30, "<":1.04, "<<":0.40},
+  "2S":  {clean:1.30, q:1.30, "<":1.04, "<<":0.40},
+  "2Lo": {clean:1.70, q:1.70, "<":1.36, "<<":0.50},
+  "2F":  {clean:1.80, q:1.80, "<":1.44, "<<":0.50, "!":1.80, "e":1.44},
+  "2Lz": {clean:2.10, q:2.10, "<":1.68, "<<":0.60, "!":2.10, "e":1.68},
+  "2A":  {clean:3.30, q:3.30, "<":2.64, "<<":1.10},
+  "3T":  {clean:4.20, q:4.20, "<":3.36, "<<":1.30},
+  "3S":  {clean:4.30, q:4.30, "<":3.44, "<<":1.30},
+  "3Lo": {clean:4.90, q:4.90, "<":3.92, "<<":1.70},
+  "3F":  {clean:5.30, q:5.30, "<":4.24, "<<":1.80, "!":5.30, "e":4.24},
+  "3Lz": {clean:5.90, q:5.90, "<":4.72, "<<":2.10, "!":5.90, "e":4.72},
+  "3A":  {clean:8.00, q:8.00, "<":6.40, "<<":3.30},
+  "4T":  {clean:9.50, q:9.50, "<":7.60, "<<":4.20},
+  "4S":  {clean:9.70, q:9.70, "<":7.76, "<<":4.30},
+  "4Lo": {clean:10.50,q:10.50,"<":8.40, "<<":4.90},
+  "4F":  {clean:11.00,q:11.00,"<":8.80, "<<":5.30, "!":11.00,"e":8.80},
+  "4Lz": {clean:11.50,q:11.50,"<":9.20, "<<":5.90, "!":11.50,"e":9.20},
+  "4A":  {clean:12.50,q:12.50,"<":10.00,"<<":8.00},
+  "5T":  {clean:14.00,q:14.00,"<":11.20,"<<":9.50},
+  "5S":  {clean:14.00,q:14.00,"<":11.20,"<<":9.50},
+  "5Lo": {clean:14.00,q:14.00,"<":11.20,"<<":9.50},
+  "5F":  {clean:14.00,q:14.00,"<":11.20,"<<":9.50, "!":14.00,"e":11.20},
+  "5Lz": {clean:14.00,q:14.00,"<":11.20,"<<":9.50, "!":14.00,"e":11.20}
+};
+function modOptions(jumpKey){
+  const opts=["clean"]; const bv=jumpsBV[jumpKey]; if(!bv) return opts;
+  if("q"  in bv) opts.push("q");
+  if("<"  in bv) opts.push("<");
+  if("<<" in bv) opts.push("<<");
+  if("!"  in bv) opts.push("!");
+  if("e"  in bv) opts.push("e");
+  return opts;
+}
+
+/* ===================== SPINS (singles + pair solo spins use same SOV) ===================== */
+const spins = {
+  "USp":  {B:1.00, 1:1.20, 2:1.50, 3:1.90, 4:2.40},
+  "LSp":  {B:1.20, 1:1.50, 2:1.90, 3:2.40, 4:2.70},
+  "CSp":  {B:1.10, 1:1.40, 2:1.80, 3:2.30, 4:2.60},
+  "SSp":  {B:1.10, 1:1.30, 2:1.60, 3:2.10, 4:2.50},
+  "FUSp": {B:1.50, 1:1.70, 2:2.00, 3:2.40, 4:2.90, BV:1.13,"1V":1.28,"2V":1.50,"3V":1.80,"4V":2.18},
+  "FLSp": {B:1.70, 1:2.00, 2:2.40, 3:2.90, 4:3.20, BV:1.28,"1V":1.50,"2V":1.80,"3V":2.18,"4V":2.40},
+  "FCSp": {B:1.60, 1:1.90, 2:2.30, 3:2.80, 4:3.20, BV:1.20,"1V":1.43,"2V":1.73,"3V":2.10,"4V":2.40},
+  "FSSp": {B:1.70, 1:2.00, 2:2.30, 3:2.60, 4:3.00, BV:1.28,"1V":1.50,"2V":1.73,"3V":1.95,"4V":2.25},
+  "CUSp": {B:1.50, 1:1.70, 2:2.00, 3:2.40, 4:2.90, BV:1.13,"1V":1.28,"2V":1.50,"3V":1.80,"4V":2.18},
+  "FCUSp":{B:1.50, 1:1.70, 2:2.00, 3:2.40, 4:2.90, BV:1.13,"1V":1.28,"2V":1.50,"3V":1.80,"4V":2.18},
+  "CLSp": {B:1.70, 1:2.00, 2:2.40, 3:2.90, 4:3.20, BV:1.28,"1V":1.50,"2V":1.80,"3V":2.18,"4V":2.40},
+  "FCLSp":{B:1.70, 1:2.00, 2:2.40, 3:2.90, 4:3.20, BV:1.28,"1V":1.50,"2V":1.80,"3V":2.18,"4V":2.40},
+  "CCSp": {B:1.70, 1:2.00, 2:2.30, 3:2.80, 4:3.20, BV:1.28,"1V":1.50,"2V":1.73,"3V":2.10,"4V":2.40},
+  "FCCSp":{B:1.70, 1:2.00, 2:2.30, 3:2.80, 4:3.20, BV:1.28,"1V":1.50,"2V":1.73,"3V":2.10,"4V":2.40},
+  "CSSp": {B:1.60, 1:1.90, 2:2.30, 3:2.60, 4:3.00, BV:1.20,"1V":1.43,"2V":1.73,"3V":1.95,"4V":2.25},
+  "FCSSp":{B:1.60, 1:1.90, 2:2.30, 3:2.60, 4:3.00, BV:1.20,"1V":1.43,"2V":1.73,"3V":1.95,"4V":2.25},
+  "CoSp": {B:1.50, 1:1.70, 2:2.00, 3:2.50, 4:3.00, BV:1.13,"1V":1.28,"2V":1.50,"3V":1.88,"4V":2.25},
+  "FCoSp":{B:1.50, 1:1.70, 2:2.00, 3:2.50, 4:3.00, BV:1.13,"1V":1.28,"2V":1.50,"3V":1.88,"4V":2.25},
+  "CCoSp":{B:1.70, 1:2.00, 2:2.50, 3:3.00, 4:3.50, BV:1.28,"1V":1.50,"2V":1.88,"3V":2.25,"4V":2.63},
+  "FCCoSp":{B:1.70,1:2.00, 2:2.50, 3:3.00, 4:3.50, BV:1.28,"1V":1.50,"2V":1.88,"3V":2.25,"4V":2.63}
+};
+const spinLevels = ["B","1","2","3","4","BV","1V","2V","3V","4V"];
+
+/* ===================== STEPS / CHOREO (singles + pairs share) ===================== */
+const steps = {B:1.50, 1:1.80, 2:2.60, 3:3.30, 4:3.90};
+const choreoBV = 3.00; // ChSq1 — GOE is absolute (see below)
+
+/* ===================== PAIR ELEMENTS ===================== */
+// Lifts — base values per group (B,1,2,3,4)
+const pairLifts = {
+  "1Li":  {B:1.40, 1:1.50, 2:1.70, 3:1.90, 4:2.10},
+  "2Li":  {B:1.50, 1:1.90, 2:2.30, 3:2.70, 4:3.10},
+  "3Li":  {B:3.50, 1:3.90, 2:4.30, 3:4.70, 4:5.10},
+  "4Li":  {B:3.50, 1:3.90, 2:4.30, 3:4.70, 4:5.10},
+  "5SLi": {B:4.60, 1:5.00, 2:5.40, 3:5.80, 4:6.20},
+  "5TLi": {B:4.60, 1:5.00, 2:5.40, 3:5.80, 4:6.20},
+  "5BLi": {B:5.00, 1:5.40, 2:5.80, 3:6.20, 4:6.50},
+  "5ALi": {B:5.40, 1:5.80, 2:6.20, 3:6.60, 4:7.00},
+  "5RLi": {B:5.40, 1:5.80, 2:6.20, 3:6.60, 4:7.00}
+};
+// Twist Lifts (1-4 revs), with "<<" downgraded variant
+const twistLifts = {
+  "1Tw":  {clean:{B:0.90,1:1.10,2:1.30,3:1.50,4:1.70}, "<<":{B:0,1:0,2:0,3:0,4:0}},
+  "2Tw":  {clean:{B:2.60,1:2.80,2:3.00,3:3.20,4:3.40}, "<<":{B:0.90,1:1.10,2:1.30,3:1.50,4:1.70}},
+  "3Tw":  {clean:{B:4.80,1:5.10,2:5.40,3:5.70,4:6.00}, "<<":{B:2.60,1:2.80,2:3.00,3:3.20,4:3.40}},
+  "4Tw":  {clean:{B:6.40,1:6.80,2:7.20,3:7.60,4:8.00}, "<<":{B:4.80,1:5.10,2:5.40,3:5.70,4:6.00}}
+};
+// Throw Jumps (1Th through 4Th, by type). 'clean' value; '<', '<<', 'q', 'e', '!' modifiers as applicable.
+const throwJumps = {
+  "1TTh":  {clean:1.10, q:1.10, "<":0.83, "<<":0.00},
+  "1STh":  {clean:1.10, q:1.10, "<":0.83, "<<":0.00},
+  "1LoTh": {clean:1.40, q:1.40, "<":1.05, "<<":0.00},
+  "1FTh":  {clean:1.40, q:1.40, "<":1.05, "<<":0.00},
+  "1LzTh": {clean:1.40, q:1.40, "<":1.05, "<<":0.00},
+  "1ATh":  {clean:2.20, q:2.20, "<":1.65, "<<":0.00},
+  "2TTh":  {clean:2.50, q:2.50, "<":1.88, "<<":1.10},
+  "2STh":  {clean:2.50, q:2.50, "<":1.88, "<<":1.10},
+  "2LoTh": {clean:2.80, q:2.80, "<":2.10, "<<":1.40},
+  "2FTh":  {clean:3.00, q:3.00, "<":2.25, "<<":1.40},
+  "2LzTh": {clean:3.00, q:3.00, "<":2.25, "<<":1.40},
+  "2ATh":  {clean:4.00, q:4.00, "<":3.00, "<<":2.20},
+  "3TTh":  {clean:4.40, q:4.40, "<":3.30, "<<":2.50},
+  "3STh":  {clean:4.40, q:4.40, "<":3.30, "<<":2.50},
+  "3LoTh": {clean:5.00, q:5.00, "<":3.75, "<<":2.80},
+  "3FTh":  {clean:5.30, q:5.30, "<":3.98, "<<":3.00},
+  "3LzTh": {clean:5.30, q:5.30, "<":3.98, "<<":3.00},
+  "3ATh":  {clean:6.00, q:6.00, "<":4.50, "<<":3.30},
+  "4TTh":  {clean:6.50, q:6.50, "<":4.88, "<<":3.50},
+  "4STh":  {clean:6.50, q:6.50, "<":4.88, "<<":3.50},
+  "4LoTh": {clean:7.00, q:7.00, "<":5.25, "<<":3.80},
+  "4FTh":  {clean:7.50, q:7.50, "<":5.63, "<<":4.00},
+  "4LzTh": {clean:7.50, q:7.50, "<":5.63, "<<":4.00}
+};
+function thrwModOptions(key){
+  const opts=["clean"]; const bv=throwJumps[key]; if(!bv) return opts;
+  if("q"  in bv) opts.push("q");
+  if("<"  in bv) opts.push("<");
+  if("<<" in bv) opts.push("<<");
+  return opts;
+}
+// Death Spirals — per-direction SOV (verified against ISU 2026 Worlds protocols)
+// Inside spirals step by 0.30 per level; outside spirals step by 0.40 per level.
+// Backward spirals are worth more than forward (consistent with difficulty).
+const deathSpirals = {
+  "FiDs": {B:2.30, 1:2.90, 2:3.20, 3:3.50, 4:3.80},
+  "FoDs": {B:3.50, 1:3.90, 2:4.30, 3:4.70, 4:5.10},
+  "BiDs": {B:2.80, 1:3.10, 2:3.40, 3:3.70, 4:4.00},
+  "BoDs": {B:3.20, 1:3.60, 2:4.00, 3:4.40, 4:4.80}
+};
+// Pair Spin Combination (PCoSp) — combined spin element
+// Verified PCoSp3=4.00, PCoSp4=4.50 from WC 2026 protocols.
+const pairSpins = {
+  "PSp":   {B:2.00, 1:2.50, 2:3.00, 3:3.50, 4:4.00, BV:1.50,"1V":1.88,"2V":2.25,"3V":2.63,"4V":3.00},
+  "PCoSp": {B:2.50, 1:3.00, 2:3.50, 3:4.00, 4:4.50, BV:1.88,"1V":2.25,"2V":2.63,"3V":3.00,"4V":3.38}
+};
+
+/* ===================== ICE DANCE ELEMENTS ===================== */
+// Pattern Dance Type Step Sequence Style D (PSt) — Senior FD/RD
+const patternStep = {B:5.00, 1:7.45, 2:7.95, 3:8.70, 4:9.45};
+// Dance Spin (one element, regardless of position)
+const danceSpin = {B:1.80, 1:3.75, 2:4.50, 3:5.25, 4:6.00};
+// Dance Lifts — short lifts (each lift is one of Sta/Sl/Cu/Ro)
+const danceLifts = {
+  "StaLi": {B:1.15, 1:3.20, 2:3.95, 3:4.70, 4:5.45},
+  "SlLi":  {B:1.15, 1:3.20, 2:3.95, 3:4.70, 4:5.45},
+  "CuLi":  {B:1.15, 1:3.20, 2:3.95, 3:4.70, 4:5.45},
+  "RoLi":  {B:1.15, 1:3.20, 2:3.95, 3:4.70, 4:5.45}
+};
+// Set of Sequential Twizzles (Woman + Man computed separately; total = both summed)
+const seqTwizzles = {B:1.05, 1:2.67, 2:2.92, 3:3.30, 4:3.67};
+// Set of Synchronized Twizzles
+const synTwizzles = {B:0.80, 1:2.42, 2:2.67, 3:3.05, 4:3.42};
+// One Foot Turns Sequence (per partner)
+const oneFootTurns = {B:0.80, 1:2.42, 2:2.67, 3:3.05, 4:3.42};
+// Step Sequence Style B (Diagonal / Midline — per partner)
+const danceStep = {B:2.25, 1:3.48, 2:3.73, 3:4.10, 4:4.48};
+// Choreographic Dance elements (one absolute base value each, GOE absolute ±0.50/step)
+// Verified against 2025/26 NHK Trophy protocols: all dance choreo elements share BV 1.10
+// (ChRS in RD has BV 2.00).
+const choreoDance = {
+  "ChSt":  {bv:1.10, label:"Choreographic Step Sequence"},
+  "ChLi":  {bv:1.10, label:"Choreographic Lift"},
+  "ChSl":  {bv:1.10, label:"Choreographic Slide"},
+  "ChSp":  {bv:1.10, label:"Choreographic Spinning Movement"},
+  "ChTw":  {bv:1.10, label:"Choreographic Twizzling Movement"},
+  "ChCh":  {bv:1.10, label:"Choreographic Character Step Sequence"},
+  "ChRS":  {bv:2.00, label:"Choreographic Rhythm Sequence (RD)"}
+};
+// Pattern Dance (Junior RD — used pattern dances Rhumba/Quickstep). Base values per sequence.
+// Keep simple: one entry per pattern dance.
+
+/* ===================== GOE ===================== */
+const goePctJumpSpinStep = {
+  "-5":-0.50,"-4":-0.40,"-3":-0.30,"-2":-0.20,"-1":-0.10,
+  "0":0.00,
+  "1":0.10,"2":0.20,"3":0.30,"4":0.40,"5":0.50
+};
+const goeAbsChSq = {"-5":-2.50,"-4":-2.00,"-3":-1.50,"-2":-1.00,"-1":-0.50,"0":0.00,
+                    "1":0.50,"2":1.00,"3":1.50,"4":2.00,"5":2.50};
+// Choreographic dance elements: GOE is absolute, ±0.50 per step (per 2705 SOV — same as ChSq)
+const goeAbsChoreoDance = goeAbsChSq;
+
+/* ===================== PCS FACTORS ===================== */
+// Source: 2025/26 official ISU protocols (Olympics, Worlds, NHK Trophy)
+// Each component is scored 0.25–10.00, multiplied by these factors.
+const PCS_FACTORS = {
+  singles: {SP:1.67, FS:3.33},   // max 50.10 / 99.90
+  pairs:   {SP:1.33, FS:2.67},   // max 39.90 / 80.10
+  dance:   {RD:1.33, FD:2.00}    // max 39.90 / 60.00
+};
+
+/* ===================== SEGMENT CONFIGURATION ===================== */
+const SEGMENTS = {
+  singles: [
+    {id:"SP", label:"Short Program", note:"Senior SP — typically 7 elements"},
+    {id:"FS", label:"Free Skating",  note:"Senior FS — typically 12 elements (11 men)"}
+  ],
+  pairs:   [
+    {id:"SP", label:"Short Program", note:"Senior Pair SP — typically 7 elements"},
+    {id:"FS", label:"Free Skating",  note:"Senior Pair FS — typically 12 elements"}
+  ],
+  dance:   [
+    {id:"RD", label:"Rhythm Dance",  note:"Senior RD — pattern dance + lifts + step seq + twizzles"},
+    {id:"FD", label:"Free Dance",    note:"Senior FD — lifts + step seq + twizzles + dance spin + choreo"}
+  ]
+};
+
+/* ===================== Default skeletons ===================== */
+const DEFAULTS = {
+  singles: {
+    SP: [
+      {cat:"jump", key:"3A",   mod:"clean", goe:0, half:false},
+      {cat:"jump", key:"4T",   mod:"clean", goe:0, half:false},
+      {cat:"combo",key:"3Lz",  mod:"clean", goe:0, half:false, combo:["3T"], comboMods:["clean"]},
+      {cat:"spin", key:"FCSp", level:"4",  goe:0},
+      {cat:"step", level:"3",  goe:0},
+      {cat:"spin", key:"CCoSp",level:"4",  goe:0},
+    ],
+    FS: [
+      {cat:"jump", key:"4T",   mod:"clean", goe:0, half:false},
+      {cat:"jump", key:"4S",   mod:"clean", goe:0, half:false},
+      {cat:"combo",key:"3A",   mod:"clean", goe:0, half:false, combo:["3T"], comboMods:["clean"]},
+      {cat:"spin", key:"FSSp", level:"4",  goe:0},
+      {cat:"jump", key:"3Lz",  mod:"clean", goe:0, half:false},
+      {cat:"step", level:"3",  goe:0},
+      {cat:"combo",key:"3F",   mod:"clean", goe:0, half:true,  combo:["1Eu","3S"], comboMods:["clean","clean"]},
+      {cat:"jump", key:"3Lo",  mod:"clean", goe:0, half:true},
+      {cat:"spin", key:"CCoSp",level:"4",  goe:0},
+      {cat:"choreo", goe:0},
+      {cat:"spin", key:"CCSp", level:"4",  goe:0},
+    ]
+  },
+  pairs: {
+    SP: [
+      {cat:"twist", key:"3Tw", mod:"clean", level:"3", goe:0},
+      {cat:"jump",  key:"3T",  mod:"clean", goe:0, half:false},
+      {cat:"throw", key:"3LoTh", mod:"clean", goe:0},
+      {cat:"lift",  key:"3Li", level:"4", goe:0},
+      {cat:"pspin", key:"PCoSp", level:"4", goe:0},
+      {cat:"death", key:"BoDs", level:"3", goe:0},
+      {cat:"step",  level:"3", goe:0}
+    ],
+    FS: [
+      {cat:"twist", key:"3Tw", mod:"clean", level:"3", goe:0},
+      {cat:"throw", key:"3LzTh", mod:"clean", goe:0},
+      {cat:"jump",  key:"3S",  mod:"clean", goe:0, half:false},
+      {cat:"throw", key:"3FTh", mod:"clean", goe:0},
+      {cat:"lift",  key:"5ALi", level:"4", goe:0},
+      {cat:"lift",  key:"3Li",  level:"4", goe:0},
+      {cat:"lift",  key:"4Li",  level:"4", goe:0},
+      {cat:"pspin", key:"PCoSp", level:"4", goe:0},
+      {cat:"death", key:"BoDs", level:"3", goe:0},
+      {cat:"step",  level:"3", goe:0},
+      {cat:"choreo", goe:0}
+    ]
+  },
+  dance: {
+    RD: [
+      {cat:"pstep", level:"3", goe:0},     // Pattern Dance Type Step Sequence Style D
+      {cat:"dlift", key:"StaLi", level:"4", goe:0},
+      {cat:"twizz", kind:"seq",  level:"4", goe:0}, // Set of Sequential Twizzles
+      {cat:"dstep", kind:"Mi",   level:"3", goe:0}, // Midline Step Style B
+      {cat:"dspin", level:"4", goe:0}
+    ],
+    FD: [
+      {cat:"dlift", key:"SlLi", level:"4", goe:0},
+      {cat:"dlift", key:"RoLi", level:"4", goe:0},
+      {cat:"dlift", key:"CuLi", level:"4", goe:0},
+      {cat:"twizz", kind:"syn", level:"4", goe:0}, // Synchronized Twizzles
+      {cat:"oneft", level:"3", goe:0},             // One Foot Turns Sequence
+      {cat:"dstep", kind:"Di",  level:"3", goe:0},
+      {cat:"dspin", level:"4", goe:0},
+      {cat:"chord", key:"ChSt", goe:0},
+      {cat:"chord", key:"ChLi", goe:0},
+      {cat:"chord", key:"ChSp", goe:0}
+    ]
+  }
+};
+
+/* ============================================================
+   STATE
+   ============================================================ */
+let discipline = "singles";
+let segment    = "SP";
+let elementsState = [];
+let pcsState = {Composition:5.0, Presentation:5.0, "Skating Skills":5.0};
+
+/* ============================================================
+   UI WIRING
+   ============================================================ */
+function setDiscipline(d){
+  discipline = d;
+  ["discSingles","discPairs","discDance"].forEach(id=>{
+    document.getElementById(id).classList.remove("active");
+  });
+  document.getElementById({singles:"discSingles",pairs:"discPairs",dance:"discDance"}[d]).classList.add("active");
+  // Reset segments picker
+  const sp = document.getElementById("segPicker");
+  sp.innerHTML="";
+  SEGMENTS[d].forEach((s,i)=>{
+    const b=document.createElement("button");
+    b.textContent=s.label;
+    b.onclick=()=>setSegment(s.id);
+    if(i===0) b.classList.add("active");
+    sp.appendChild(b);
+  });
+  setSegment(SEGMENTS[d][0].id);
+}
+
+function setSegment(id){
+  segment=id;
+  // Update segment picker active styles
+  const buttons = document.getElementById("segPicker").querySelectorAll("button");
+  const segs = SEGMENTS[discipline];
+  buttons.forEach((b,i)=> b.classList.toggle("active", segs[i].id===id));
+  const segMeta = segs.find(s=>s.id===id);
+  document.getElementById("segLabel").textContent = segMeta.note;
+  const f = PCS_FACTORS[discipline][id];
+  document.getElementById("pcsFactorLabel").textContent = `factor ${f.toFixed(2)} · max ${(3*10*f).toFixed(2)}`;
+  const factorTextByDisc = {
+    singles: "Singles factors (Senior, 2025/26): SP 1.67 · FS 3.33 per component (max 50.10 / 99.90).",
+    pairs:   "Pairs factors (Senior, 2025/26): SP 1.33 · FS 2.67 per component (max 39.90 / 80.10).",
+    dance:   "Ice Dance factors (Senior, 2025/26): RD 1.33 · FD 2.00 per component (max 39.90 / 60.00)."
+  };
+  document.getElementById("pcsNote").textContent =
+    "Each component 0.25–10.00 in 0.25 steps. " + factorTextByDisc[discipline] +
+    " Serious-error caps: 1 → 9.50; 2+ → 8.75.";
+  document.getElementById("elementNote").innerHTML = elementNoteFor(discipline);
+  elementsState = JSON.parse(JSON.stringify(DEFAULTS[discipline][id]));
+  renderElements(); recalc();
+}
+
+function elementNoteFor(d){
+  if(d==="singles") return `“Mod.” = jump modifiers: <b>q</b> (landed on the quarter, full BV), <b>&lt;</b> (under-rotated, 80% BV), <b>&lt;&lt;</b> (downgraded, BV of one rev. less), <b>e</b> (wrong edge F/Lz, reduced BV), <b>!</b> (unclear edge, full BV), <b>V</b> (spin reqs not met). Combo/sequence: enter each jump on its own row. <b>×1.1</b> = bonus for jump element near program end (when applicable).`;
+  if(d==="pairs")   return `Pair categories: <b>twist</b> (1Tw–4Tw), <b>throw</b> (1Th–4Th), <b>lift</b> (Groups 1–5: SLi/TLi/BLi/ALi/RLi), <b>pspin</b> (PSp/PCoSp), <b>death</b> (FoI/FoO/Bi/Bo Ds), <b>jump</b>/<b>combo</b> (solo jumps), <b>spin</b> (solo spins), <b>step</b>, <b>choreo</b>. GOE on combos is based on the highest BV of any jump in the combo.`;
+  if(d==="dance")   return `Ice Dance categories: <b>pstep</b> Pattern Dance Type Step Style D, <b>dlift</b> (StaLi/SlLi/CuLi/RoLi), <b>twizz</b> (sequential vs. synchronized — BV is sum of W+M), <b>oneft</b> (One Foot Turns Sequence — BV is sum of W+M), <b>dstep</b> Style B (Mi/Di — BV is sum of W+M), <b>dspin</b>, <b>chord</b> (ChSt/ChLi/ChSl/ChSp/ChTw/ChCh, GOE absolute).`;
+  return "";
+}
+
+/* ============================================================
+   RENDER ELEMENTS
+   ============================================================ */
+function renderElements(){
+  const wrap=document.getElementById("elements");
+  wrap.innerHTML="";
+  elementsState.forEach((el,idx)=> wrap.appendChild(renderRow(el,idx)));
+}
+
+function makeSelect(options, value, onChange, style){
+  const sel=document.createElement("select");
+  options.forEach(o=>{
+    const op=document.createElement("option");
+    if(typeof o === "string"){ op.value=o; op.textContent=o; }
+    else { op.value=o.value; op.textContent=o.label; }
+    if((typeof o === "string"? o : o.value)===value) op.selected=true;
+    sel.appendChild(op);
+  });
+  if(style) Object.assign(sel.style, style);
+  sel.onchange=()=>onChange(sel.value);
+  return sel;
+}
+
+function renderRow(el, idx){
+  const row=document.createElement("div");
+  row.className="row";
+  // index
+  const ix=document.createElement("div"); ix.style.color="var(--muted)"; ix.style.fontSize="12px";
+  ix.textContent=(idx+1); row.appendChild(ix);
+
+  // === ELEMENT cell + sometimes inline combo ===
+  const elCell=document.createElement("div");
+
+  if(el.cat==="jump" || el.cat==="combo"){
+    elCell.appendChild(makeSelect(Object.keys(jumpsBV), el.key, v=>{el.key=v; recalc(); renderElements();}));
+    if(el.cat==="combo"){
+      const small=document.createElement("div");
+      small.style.marginTop="4px"; small.style.display="flex"; small.style.gap="4px"; small.style.flexWrap="wrap";
+      (el.combo||[]).forEach((jk,ji)=>{
+        const s=makeSelect(Object.keys(jumpsBV).map(k=>({value:k,label:"+ "+k})), jk, v=>{el.combo[ji]=v; recalc(); renderElements();}, {flex:"0 0 80px"});
+        small.appendChild(s);
+        const m=makeSelect(modOptions(jk).map(o=>({value:o,label:o==="clean"?"–":o})),
+          el.comboMods?.[ji]||"clean",
+          v=>{ if(!el.comboMods) el.comboMods=el.combo.map(()=>"clean"); el.comboMods[ji]=v; recalc(); renderElements(); }, {flex:"0 0 50px"});
+        small.appendChild(m);
+        const rb=document.createElement("button"); rb.className="del"; rb.textContent="×";
+        rb.onclick=()=>{ el.combo.splice(ji,1); if(el.comboMods) el.comboMods.splice(ji,1); recalc(); renderElements(); };
+        small.appendChild(rb);
+      });
+      const addJ=document.createElement("button"); addJ.className="btn"; addJ.style.padding="2px 6px"; addJ.style.fontSize="11px";
+      addJ.textContent="+ jump"; addJ.onclick=()=>{
+        el.combo = el.combo || []; el.comboMods=el.comboMods||[];
+        el.combo.push("2T"); el.comboMods.push("clean"); recalc(); renderElements();
+      };
+      small.appendChild(addJ);
+      elCell.appendChild(small);
+    }
+  }
+  else if(el.cat==="spin"){
+    elCell.appendChild(makeSelect(Object.keys(spins), el.key, v=>{el.key=v; recalc();}));
+  }
+  else if(el.cat==="step"){ elCell.textContent="Step Sequence (StSq)"; }
+  else if(el.cat==="choreo"){ elCell.textContent="Choreographic Sequence (ChSq1)"; }
+  else if(el.cat==="throw"){
+    elCell.appendChild(makeSelect(Object.keys(throwJumps), el.key, v=>{el.key=v; recalc(); renderElements();}));
+  }
+  else if(el.cat==="lift"){
+    elCell.appendChild(makeSelect(Object.keys(pairLifts), el.key, v=>{el.key=v; recalc();}));
+  }
+  else if(el.cat==="twist"){
+    elCell.appendChild(makeSelect(Object.keys(twistLifts), el.key, v=>{el.key=v; recalc(); renderElements();}));
+  }
+  else if(el.cat==="pspin"){
+    elCell.appendChild(makeSelect(Object.keys(pairSpins), el.key, v=>{el.key=v; recalc();}));
+  }
+  else if(el.cat==="death"){
+    elCell.appendChild(makeSelect(Object.keys(deathSpirals), el.key, v=>{el.key=v; recalc();}));
+  }
+  // Ice Dance
+  else if(el.cat==="pstep"){ elCell.textContent="Pattern Dance Step Style D (PSt)"; }
+  else if(el.cat==="dlift"){
+    elCell.appendChild(makeSelect(Object.keys(danceLifts), el.key, v=>{el.key=v; recalc();}));
+  }
+  else if(el.cat==="twizz"){
+    elCell.appendChild(makeSelect(
+      [{value:"seq",label:"Set of Sequential Twizzles"},
+       {value:"syn",label:"Set of Synchronized Twizzles"}],
+      el.kind, v=>{el.kind=v; recalc();}));
+  }
+  else if(el.cat==="oneft"){ elCell.textContent="One Foot Turns Sequence"; }
+  else if(el.cat==="dstep"){
+    elCell.appendChild(makeSelect(
+      [{value:"Di",label:"Diagonal Step Style B"},
+       {value:"Mi",label:"Midline Step Style B"}],
+      el.kind, v=>{el.kind=v; recalc();}));
+  }
+  else if(el.cat==="dspin"){ elCell.textContent="Dance Spin (DSp)"; }
+  else if(el.cat==="chord"){
+    elCell.appendChild(makeSelect(
+      Object.keys(choreoDance).map(k=>({value:k,label:`${k} — ${choreoDance[k].label}`})),
+      el.key, v=>{el.key=v; recalc();}));
+  }
+
+  row.appendChild(elCell);
+
+  // === MOD cell ===
+  const modCell=document.createElement("div");
+  if(el.cat==="jump" || el.cat==="combo"){
+    modCell.appendChild(makeSelect(modOptions(el.key).map(o=>({value:o,label:o==="clean"?"–":o})),
+      el.mod, v=>{el.mod=v; recalc();}));
+  } else if(el.cat==="throw"){
+    modCell.appendChild(makeSelect(thrwModOptions(el.key).map(o=>({value:o,label:o==="clean"?"–":o})),
+      el.mod, v=>{el.mod=v; recalc();}));
+  } else if(el.cat==="twist"){
+    modCell.appendChild(makeSelect(["clean","<<"].map(o=>({value:o,label:o==="clean"?"–":o})),
+      el.mod, v=>{el.mod=v; recalc();}));
+  }
+  row.appendChild(modCell);
+
+  // === LEVEL cell ===
+  const lvlCell=document.createElement("div");
+  function lvlSelect(allowed){
+    lvlCell.appendChild(makeSelect(allowed, el.level, v=>{el.level=v; recalc();}));
+  }
+  if(el.cat==="spin")       lvlSelect(spinLevels.filter(lv=>!lv.endsWith("V") || ("BV" in spins[el.key])));
+  else if(el.cat==="step")  lvlSelect(["B","1","2","3","4"]);
+  else if(el.cat==="lift")  lvlSelect(["B","1","2","3","4"]);
+  else if(el.cat==="twist") lvlSelect(["B","1","2","3","4"]);
+  else if(el.cat==="pspin") lvlSelect(["B","1","2","3","4","BV","1V","2V","3V","4V"]);
+  else if(el.cat==="death") lvlSelect(["B","1","2","3","4"]);
+  else if(el.cat==="pstep") lvlSelect(["B","1","2","3","4"]);
+  else if(el.cat==="dlift") lvlSelect(["B","1","2","3","4"]);
+  else if(el.cat==="twizz") lvlSelect(["B","1","2","3","4"]);
+  else if(el.cat==="oneft") lvlSelect(["B","1","2","3","4"]);
+  else if(el.cat==="dstep") lvlSelect(["B","1","2","3","4"]);
+  else if(el.cat==="dspin") lvlSelect(["B","1","2","3","4"]);
+  row.appendChild(lvlCell);
+
+  // === ×1.1 cell (jumps + throws + solo jumps in pairs) ===
+  const halfCell=document.createElement("div");
+  if(["jump","combo","throw"].includes(el.cat)){
+    const cb=document.createElement("input"); cb.type="checkbox"; cb.checked=!!el.half;
+    cb.onchange=()=>{el.half=cb.checked; recalc();};
+    halfCell.appendChild(cb);
+  }
+  row.appendChild(halfCell);
+
+  // === BV cell ===
+  const bvCell=document.createElement("div"); bvCell.className="num bv"; bvCell.id="bv-"+idx;
+  row.appendChild(bvCell);
+
+  // === GOE cell ===
+  const goeCell=document.createElement("div");
+  goeCell.appendChild(makeSelect(
+    ["-5","-4","-3","-2","-1","0","1","2","3","4","5"].map(g=>({value:g,label:(parseInt(g,10)>0?"+":"")+g})),
+    String(el.goe||0), v=>{el.goe=parseInt(v,10); recalc();}
+  ));
+  row.appendChild(goeCell);
+
+  // === Element total cell ===
+  const totCell=document.createElement("div"); totCell.className="num"; totCell.id="tot-"+idx;
+  row.appendChild(totCell);
+
+  // === Delete button ===
+  const del=document.createElement("button"); del.className="del"; del.textContent="×";
+  del.onclick=()=>{ elementsState.splice(idx,1); renderElements(); recalc(); };
+  row.appendChild(del);
+
+  return row;
+}
+
+/* ============================================================
+   ADD / RESET
+   ============================================================ */
+function addElement(){
+  let cats=[];
+  if(discipline==="singles") cats=["jump","combo","spin","step","choreo"];
+  if(discipline==="pairs")   cats=["jump","combo","throw","twist","lift","pspin","death","spin","step","choreo"];
+  if(discipline==="dance")   cats=["pstep","dlift","twizz","oneft","dstep","dspin","chord"];
+  const cat=prompt(`Add element type. Options: ${cats.join(" | ")}`, cats[0]);
+  if(!cat || !cats.includes(cat)) return;
+  const tpl={
+    jump:  {cat,key:"3T",mod:"clean",goe:0,half:false},
+    combo: {cat,key:"3T",mod:"clean",combo:["2T"],comboMods:["clean"],goe:0,half:false},
+    spin:  {cat,key:"CCoSp",level:"4",goe:0},
+    step:  {cat,level:"3",goe:0},
+    choreo:{cat,goe:0},
+    throw: {cat,key:"3LoTh",mod:"clean",goe:0,half:false},
+    twist: {cat,key:"3Tw",mod:"clean",level:"3",goe:0},
+    lift:  {cat,key:"3Li",level:"4",goe:0},
+    pspin: {cat,key:"PCoSp",level:"4",goe:0},
+    death: {cat,key:"BoDs",level:"4",goe:0},
+    pstep: {cat,level:"3",goe:0},
+    dlift: {cat,key:"StaLi",level:"4",goe:0},
+    twizz: {cat,kind:"seq",level:"4",goe:0},
+    oneft: {cat,level:"3",goe:0},
+    dstep: {cat,kind:"Mi",level:"3",goe:0},
+    dspin: {cat,level:"4",goe:0},
+    chord: {cat,key:"ChSt",goe:0}
+  }[cat];
+  elementsState.push(tpl); renderElements(); recalc();
+}
+
+function resetAll(){
+  setSegment(segment);
+  ["dedFalls","dedTime","dedCostume","dedMusic","dedLate","dedIllegal","dedOther"].forEach(id=>{
+    document.getElementById(id).value=0;
+  });
+  pcsState={Composition:5.0, Presentation:5.0, "Skating Skills":5.0};
+  renderPCS(); recalc();
+}
+
+/* ============================================================
+   PCS
+   ============================================================ */
+function renderPCS(){
+  const wrap=document.getElementById("pcs"); wrap.innerHTML="";
+  Object.keys(pcsState).forEach(k=>{
+    const row=document.createElement("div"); row.className="pcs-row";
+    const lbl=document.createElement("label"); lbl.textContent=k;
+    const num=document.createElement("input"); num.type="number"; num.min=0; num.max=10; num.step=0.25;
+    num.value=pcsState[k].toFixed(2);
+    const rng=document.createElement("input"); rng.type="range"; rng.min=0; rng.max=10; rng.step=0.25;
+    rng.value=pcsState[k];
+    const scaled=document.createElement("div"); scaled.className="num"; scaled.id="pcs-"+k.replace(/ /g,"_");
+    num.oninput=()=>{ pcsState[k]=parseFloat(num.value)||0; rng.value=pcsState[k]; recalc();};
+    rng.oninput=()=>{ pcsState[k]=parseFloat(rng.value); num.value=pcsState[k].toFixed(2); recalc();};
+    row.appendChild(lbl); row.appendChild(num); row.appendChild(rng); row.appendChild(scaled);
+    wrap.appendChild(row);
+  });
+}
+
+/* ============================================================
+   ELEMENT VALUE CALCULATION
+   ============================================================ */
+function bvJump(key,mod){ return jumpsBV[key]?.[mod||"clean"] ?? 0; }
+function bvThrow(key,mod){ return throwJumps[key]?.[mod||"clean"] ?? 0; }
+function bvSpin(key,lv){ return spins[key]?.[lv] ?? 0; }
+function bvLift(key,lv){ return pairLifts[key]?.[lv] ?? 0; }
+function bvTwist(key,mod,lv){ return twistLifts[key]?.[mod||"clean"]?.[lv] ?? 0; }
+function bvPspin(key,lv){ return pairSpins[key]?.[lv] ?? 0; }
+function bvDeath(key,lv){ return deathSpirals[key]?.[lv] ?? 0; }
+function bvDlift(key,lv){ return danceLifts[key]?.[lv] ?? 0; }
+
+function elementBVandGOE(el){
+  let bv=0, goeUnit=0; // goe per +1 step
+  let goeMode="pct"; // "pct" => unit = bv*0.10; "abs_chsq" => use absolute table
+
+  if(el.cat==="jump"){
+    bv = bvJump(el.key, el.mod);
+    if(el.half) bv *= 1.1;
+    goeUnit = bv*0.10;
+  }
+  else if(el.cat==="combo"){
+    const first = bvJump(el.key, el.mod);
+    let sum=first;
+    (el.combo||[]).forEach((k,i)=> sum += bvJump(k, el.comboMods?.[i]||"clean"));
+    if(el.half) sum *= 1.1;
+    bv=sum;
+    const allBV=[first, ...(el.combo||[]).map((k,i)=>bvJump(k, el.comboMods?.[i]||"clean"))];
+    goeUnit = Math.max(...allBV, 0)*0.10;
+  }
+  else if(el.cat==="spin"){ bv=bvSpin(el.key,el.level); goeUnit=bv*0.10; }
+  else if(el.cat==="step"){ bv=steps[el.level]??0; goeUnit=bv*0.10; }
+  else if(el.cat==="choreo"){ bv=choreoBV; goeMode="abs_chsq"; }
+  else if(el.cat==="throw"){
+    bv = bvThrow(el.key, el.mod);
+    if(el.half) bv*=1.1;
+    goeUnit = bv*0.10;
+  }
+  else if(el.cat==="twist"){
+    bv = bvTwist(el.key, el.mod, el.level);
+    goeUnit = bv*0.10;
+  }
+  else if(el.cat==="lift"){ bv = bvLift(el.key, el.level); goeUnit = bv*0.10; }
+  else if(el.cat==="pspin"){ bv = bvPspin(el.key, el.level); goeUnit = bv*0.10; }
+  else if(el.cat==="death"){ bv = bvDeath(el.key, el.level); goeUnit = bv*0.10; }
+  // Ice Dance
+  else if(el.cat==="pstep"){ bv = patternStep[el.level]??0; goeUnit = bv*0.10; }
+  else if(el.cat==="dlift"){ bv = bvDlift(el.key, el.level); goeUnit = bv*0.10; }
+  else if(el.cat==="twizz"){
+    const tab = el.kind==="seq" ? seqTwizzles : synTwizzles;
+    bv = 2 * (tab[el.level] ?? 0);   // Woman + Man (same BV)
+    goeUnit = bv*0.10;
+  }
+  else if(el.cat==="oneft"){ bv = 2*(oneFootTurns[el.level]??0); goeUnit = bv*0.10; }
+  else if(el.cat==="dstep"){ bv = 2*(danceStep[el.level]??0); goeUnit = bv*0.10; }
+  else if(el.cat==="dspin"){ bv = danceSpin[el.level]??0; goeUnit = bv*0.10; }
+  else if(el.cat==="chord"){ bv = choreoDance[el.key]?.bv ?? 0; goeMode="abs_chsq"; }
+
+  const g = el.goe || 0;
+  const goe = goeMode==="abs_chsq" ? goeAbsChSq[String(g)] : (goeUnit * g);
+  return {bv, goe, total: bv + goe};
+}
+
+/* ============================================================
+   RECALC
+   ============================================================ */
+function recalc(){
+  let TES=0, serious=0;
+  elementsState.forEach((el,idx)=>{
+    const r=elementBVandGOE(el);
+    TES += r.total;
+    const bvCell=document.getElementById("bv-"+idx);
+    const totCell=document.getElementById("tot-"+idx);
+    if(bvCell) bvCell.textContent = r.bv.toFixed(2)+(el.half?" ×1.1":"");
+    if(totCell){
+      totCell.textContent = r.total.toFixed(2);
+      totCell.classList.remove("pos","neg");
+      if(r.goe>0.001) totCell.classList.add("pos");
+      else if(r.goe<-0.001) totCell.classList.add("neg");
+    }
+    if(el.goe===-5) serious++;
+  });
+  const falls=parseInt(document.getElementById("dedFalls").value||0,10);
+  serious += falls;
+
+  // PCS
+  const cap = serious===0 ? 10.00 : (serious===1 ? 9.50 : 8.75);
+  const factor = PCS_FACTORS[discipline][segment];
+  let PCSsum=0;
+  Object.keys(pcsState).forEach(k=>{
+    const capped=Math.min(pcsState[k], cap);
+    const scaled=capped*factor;
+    PCSsum += scaled;
+    const out=document.getElementById("pcs-"+k.replace(/ /g,"_"));
+    if(out) out.textContent =
+      (capped<pcsState[k]?`${capped.toFixed(2)}(cap)`:capped.toFixed(2)) + " × " + factor + " = " + scaled.toFixed(2);
+  });
+
+  // Deductions
+  const ded =
+    (parseInt(document.getElementById("dedFalls").value||0,10)   || 0)*1.0 +
+    (parseInt(document.getElementById("dedTime").value||0,10)    || 0)*1.0 +
+    (parseInt(document.getElementById("dedCostume").value||0,10) || 0)*1.0 +
+    (parseInt(document.getElementById("dedMusic").value||0,10)   || 0)*1.0 +
+    (parseInt(document.getElementById("dedLate").value||0,10)    || 0)*1.0 +
+    (parseInt(document.getElementById("dedIllegal").value||0,10) || 0)*2.0 +
+    (parseFloat(document.getElementById("dedOther").value||0)    || 0);
+
+  document.getElementById("tTES").textContent   = TES.toFixed(2);
+  document.getElementById("tPCS").textContent   = PCSsum.toFixed(2);
+  document.getElementById("tDED").textContent   = ded.toFixed(2);
+  document.getElementById("tFALL").textContent  = falls;
+  document.getElementById("tTOTAL").textContent = (TES+PCSsum-ded).toFixed(2);
+  document.getElementById("tWarn").textContent =
+    serious===0 ? ""
+    : (serious===1 ? "1 serious error counted (falls + any −5 GOE) → PCS capped at 9.50/component."
+                   : `${serious} serious errors counted → PCS capped at 8.75/component.`);
+}
+
+/* ============================================================
+   INIT
+   ============================================================ */
+renderPCS();
+setDiscipline("singles");
+["dedFalls","dedTime","dedCostume","dedMusic","dedLate","dedIllegal","dedOther"]
+  .forEach(id=>document.getElementById(id).addEventListener("input", recalc));
+</script>
+
+</body>
+</html>
