@@ -1,4 +1,4 @@
-# 🛼 ISU Figure Skating Scoring Calculator
+# ⛸️ ISU Figure Skating Scoring Calculator
 
 > A fully browser-based scoring calculator for competitive figure skating — covering Singles, Pairs, and Ice Dance under ISU Season 2025/26 rules.
 
